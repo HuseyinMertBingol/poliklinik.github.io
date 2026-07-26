@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Poliklinik Nöbet Planı</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="app-header">
+  <div class="header-top">
+    <div>
+      <h1>Poliklinik Nöbet Planı</h1>
+      <p class="subtitle">Doktorların aylık poliklinik dağılımı</p>
+    </div>
+    <span id="saveStatus" class="save-status">Kayıtlı</span>
+  </div>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="board">Aylık Plan</button>
+    <button class="tab-btn" data-tab="doctors">Doktorlar</button>
+    <button class="tab-btn" data-tab="polyclinics">Poliklinikler</button>
+  </nav>
+</header>
+
+<main class="content">
+
+  <!-- AYLIK PLAN -->
+  <section id="tab-board" class="tab-panel active">
+
+    <div class="board-controls">
+      <div class="month-nav">
+        <button id="prevMonth" aria-label="Önceki ay">&#8249;</button>
+        <span id="monthLabel" class="month-label"></span>
+        <button id="nextMonth" aria-label="Sonraki ay">&#8250;</button>
+      </div>
+      <button id="copyPrevBtn" class="btn btn-outline">Geçen ayı kopyala</button>
+    </div>
+
+    <div id="emptyWarning" class="warning-box" hidden></div>
+
+    <div class="board-grid">
+      <div class="panel">
+        <div class="panel-header">Doktor Atamaları</div>
+        <div id="doctorAssignList" class="assign-list"></div>
+      </div>
+
+      <div>
+        <h2 class="section-title">Poliklinik Panosu</h2>
+        <div id="polyBoard" class="poly-board"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOKTORLAR -->
+  <section id="tab-doctors" class="tab-panel">
+    <div class="add-row">
+      <input id="newDoctorName" type="text" placeholder="Yeni doktor adı">
+      <button id="addDoctorBtn" class="btn btn-primary">+ Ekle</button>
+    </div>
+    <div id="doctorEditList" class="doctor-edit-list"></div>
+  </section>
+
+  <!-- POLİKLİNİKLER -->
+  <section id="tab-polyclinics" class="tab-panel">
+    <div class="add-row">
+      <input id="newPolyName" type="text" placeholder="Yeni poliklinik adı">
+      <button id="addPolyBtn" class="btn btn-primary">+ Ekle</button>
+    </div>
+    <div id="polyEditList" class="poly-edit-grid"></div>
+  </section>
+
+</main>
+
+<script src="script.js"></script>
+</body>
+</html>
