@@ -33,14 +33,23 @@ function seedData() {
   doctors[2].eligible = ["p1", "p2"];
   doctors[6].eligible = ["p4", "p5"];
   doctors[9].eligible = ["p7", "p8"];
-  return { doctors, polyclinics, assignments: {} };
+  return { doctors, polyclinics, assignments: {}, surgeryDays: {} };
+}
+
+function daysInMonth(key) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
 }
 
 // ---------- Veri yükle / kaydet ----------
 function loadData() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (!parsed.surgeryDays) parsed.surgeryDays = {};
+      return parsed;
+    }
   } catch (e) {
     console.error("Veri okunamadı:", e);
   }
@@ -49,6 +58,7 @@ function loadData() {
 
 let data = loadData();
 let currentMonth = monthKey(new Date());
+let surgeryMonth = monthKey(new Date());
 
 function save() {
   const statusEl = document.getElementById("saveStatus");
@@ -89,6 +99,16 @@ document.getElementById("copyPrevBtn").addEventListener("click", () => {
   renderBoard();
 });
 
+// ---------- Ameliyat günleri ay navigasyonu ----------
+document.getElementById("prevSurgeryMonth").addEventListener("click", () => {
+  surgeryMonth = shiftMonth(surgeryMonth, -1);
+  renderSurgery();
+});
+document.getElementById("nextSurgeryMonth").addEventListener("click", () => {
+  surgeryMonth = shiftMonth(surgeryMonth, 1);
+  renderSurgery();
+});
+
 // ---------- Doktor ekleme ----------
 document.getElementById("addDoctorBtn").addEventListener("click", addDoctor);
 document.getElementById("newDoctorName").addEventListener("keydown", (e) => {
@@ -104,6 +124,7 @@ function addDoctor() {
   input.value = "";
   renderDoctors();
   renderBoard();
+  renderSurgery();
 }
 
 // ---------- Poliklinik ekleme ----------
@@ -232,6 +253,74 @@ function renderBoard() {
   }
 }
 
+// ---------- Render: Ameliyat Günleri ----------
+function renderSurgery() {
+  document.getElementById("surgeryMonthLabel").textContent = monthLabel(surgeryMonth);
+  const gridEl = document.getElementById("surgeryCalendar");
+  gridEl.innerHTML = "";
+
+  if (!data.surgeryDays[surgeryMonth]) data.surgeryDays[surgeryMonth] = {};
+  const monthData = data.surgeryDays[surgeryMonth];
+  const total = daysInMonth(surgeryMonth);
+
+  for (let day = 1; day <= total; day++) {
+    const dayIds = monthData[String(day)] || [];
+    const cell = document.createElement("div");
+    cell.className = "surgery-day" + (dayIds.length > 0 ? " has-surgery" : "");
+
+    const num = document.createElement("p");
+    num.className = "surgery-day-num";
+    num.textContent = `${day} ${monthLabel(surgeryMonth).split(" ")[0]}`;
+    cell.appendChild(num);
+
+    const chips = document.createElement("div");
+    chips.className = "surgery-day-chips";
+    dayIds.forEach((docId) => {
+      const doc = data.doctors.find((d) => d.id === docId);
+      if (!doc) return;
+      const chip = document.createElement("span");
+      chip.className = "surgery-chip";
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = doc.name;
+      const rm = document.createElement("button");
+      rm.innerHTML = "&#10005;";
+      rm.addEventListener("click", () => {
+        monthData[String(day)] = dayIds.filter((id) => id !== docId);
+        save();
+        renderSurgery();
+      });
+      chip.appendChild(nameSpan);
+      chip.appendChild(rm);
+      chips.appendChild(chip);
+    });
+    cell.appendChild(chips);
+
+    const select = document.createElement("select");
+    const defOpt = document.createElement("option");
+    defOpt.value = "";
+    defOpt.textContent = "+ Doktor ekle";
+    select.appendChild(defOpt);
+    data.doctors
+      .filter((d) => !dayIds.includes(d.id))
+      .forEach((d) => {
+        const opt = document.createElement("option");
+        opt.value = d.id;
+        opt.textContent = d.name;
+        select.appendChild(opt);
+      });
+    select.addEventListener("change", () => {
+      if (!select.value) return;
+      const cur = monthData[String(day)] || [];
+      monthData[String(day)] = [...cur, select.value];
+      save();
+      renderSurgery();
+    });
+    cell.appendChild(select);
+
+    gridEl.appendChild(cell);
+  }
+}
+
 // ---------- Render: Doktorlar ----------
 function renderDoctors() {
   const listEl = document.getElementById("doctorEditList");
@@ -251,6 +340,7 @@ function renderDoctors() {
       doc.name = nameInput.value;
       save();
       renderBoard();
+      renderSurgery();
     });
 
     const delBtn = document.createElement("button");
@@ -260,9 +350,15 @@ function renderDoctors() {
     delBtn.addEventListener("click", () => {
       data.doctors = data.doctors.filter((d) => d.id !== doc.id);
       Object.values(data.assignments).forEach((ma) => delete ma[doc.id]);
+      Object.values(data.surgeryDays).forEach((monthData) => {
+        Object.keys(monthData).forEach((day) => {
+          monthData[day] = monthData[day].filter((id) => id !== doc.id);
+        });
+      });
       save();
       renderDoctors();
       renderBoard();
+      renderSurgery();
     });
 
     top.appendChild(nameInput);
@@ -351,5 +447,6 @@ function escapeHtml(str) {
 
 // ---------- Başlangıç ----------
 renderBoard();
+renderSurgery();
 renderDoctors();
 renderPolyclinics();

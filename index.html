@@ -19,6 +19,7 @@
 
   <nav class="tabs">
     <button class="tab-btn active" data-tab="board">Aylık Plan</button>
+    <button class="tab-btn" data-tab="surgery">Ameliyat Günleri</button>
     <button class="tab-btn" data-tab="doctors">Doktorlar</button>
     <button class="tab-btn" data-tab="polyclinics">Poliklinikler</button>
   </nav>
@@ -51,6 +52,19 @@
         <div id="polyBoard" class="poly-board"></div>
       </div>
     </div>
+  </section>
+
+  <!-- AMELİYAT GÜNLERİ -->
+  <section id="tab-surgery" class="tab-panel">
+    <div class="board-controls">
+      <div class="month-nav">
+        <button id="prevSurgeryMonth" aria-label="Önceki ay">&#8249;</button>
+        <span id="surgeryMonthLabel" class="month-label"></span>
+        <button id="nextSurgeryMonth" aria-label="Sonraki ay">&#8250;</button>
+      </div>
+    </div>
+    <p class="eligible-hint" style="margin-bottom:14px;">Her gün için ameliyatı olan doktor(lar)ı ekleyebilirsin.</p>
+    <div id="surgeryCalendar" class="surgery-grid"></div>
   </section>
 
   <!-- DOKTORLAR -->
