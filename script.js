@@ -20,6 +20,11 @@ function monthLabel(key) {
   return `${AY_ADLARI[m - 1]} ${y}`;
 }
 
+function daysInMonth(key) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, m, 0).getDate();
+}
+
 function seedData() {
   const polyclinics = Array.from({ length: 8 }, (_, i) => ({
     id: `p${i + 1}`,
@@ -36,11 +41,6 @@ function seedData() {
   return { doctors, polyclinics, assignments: {}, surgeryDays: {} };
 }
 
-function daysInMonth(key) {
-  const [y, m] = key.split("-").map(Number);
-  return new Date(y, m, 0).getDate();
-}
-
 // ---------- Veri yükle / kaydet ----------
 function loadData() {
   try {
@@ -48,6 +48,17 @@ function loadData() {
     if (raw) {
       const parsed = JSON.parse(raw);
       if (!parsed.surgeryDays) parsed.surgeryDays = {};
+      if (!parsed.assignments) parsed.assignments = {};
+      // Eski format kontrolü: assignments[ay][doktorId] = "p1" (düz string) ise
+      // yeni format (gün > poliklinik > [doktorId,...]) ile uyumsuz, temizle.
+      let isOldFormat = false;
+      for (const mk in parsed.assignments) {
+        const ma = parsed.assignments[mk];
+        for (const k in ma) {
+          if (typeof ma[k] === "string") isOldFormat = true;
+        }
+      }
+      if (isOldFormat) parsed.assignments = {};
       return parsed;
     }
   } catch (e) {
@@ -81,7 +92,7 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
   });
 });
 
-// ---------- Ay navigasyonu ----------
+// ---------- Aylık Plan ay navigasyonu ----------
 document.getElementById("prevMonth").addEventListener("click", () => {
   currentMonth = shiftMonth(currentMonth, -1);
   renderBoard();
@@ -94,7 +105,7 @@ document.getElementById("copyPrevBtn").addEventListener("click", () => {
   const prevKey = shiftMonth(currentMonth, -1);
   const prev = data.assignments[prevKey];
   if (!prev) return;
-  data.assignments[currentMonth] = { ...prev };
+  data.assignments[currentMonth] = JSON.parse(JSON.stringify(prev));
   save();
   renderBoard();
 });
@@ -144,112 +155,98 @@ function addPoly() {
   renderBoard();
 }
 
-// ---------- Render: Aylık Plan ----------
+// ---------- Render: Aylık Plan (gün x poliklinik) ----------
 function renderBoard() {
   document.getElementById("monthLabel").textContent = monthLabel(currentMonth);
-  const monthAssignments = data.assignments[currentMonth] || {};
+  const gridEl = document.getElementById("assignCalendar");
+  gridEl.innerHTML = "";
 
-  // Doktor atama listesi
-  const listEl = document.getElementById("doctorAssignList");
-  listEl.innerHTML = "";
+  if (!data.assignments[currentMonth]) data.assignments[currentMonth] = {};
+  const monthData = data.assignments[currentMonth];
+  const total = daysInMonth(currentMonth);
+  const ayAdi = monthLabel(currentMonth).split(" ")[0];
 
-  if (data.doctors.length === 0) {
-    listEl.innerHTML = `<p style="padding:24px;text-align:center;color:var(--text-faint);font-size:14px;">
-      Henüz doktor eklenmedi. "Doktorlar" sekmesinden ekleyebilirsin.</p>`;
+  if (data.polyclinics.length === 0) {
+    gridEl.innerHTML = `<p style="padding:24px;text-align:center;color:var(--text-faint);font-size:14px;">
+      Henüz poliklinik eklenmedi. "Poliklinikler" sekmesinden ekleyebilirsin.</p>`;
+    return;
   }
 
-  data.doctors.forEach((doc) => {
-    const restricted = doc.eligible.length > 0;
-    const options = restricted
-      ? data.polyclinics.filter((p) => doc.eligible.includes(p.id))
-      : data.polyclinics;
-
-    const row = document.createElement("div");
-    row.className = "assign-row";
-
-    const nameSpan = document.createElement("div");
-    nameSpan.className = "doc-name";
-    nameSpan.innerHTML = `<span class="${restricted ? "lock-icon" : "unlock-icon"}">${restricted ? "&#128274;" : "&#128275;"}</span> ${escapeHtml(doc.name)}`;
-
-    const select = document.createElement("select");
-    const noneOpt = document.createElement("option");
-    noneOpt.value = "";
-    noneOpt.textContent = "— Atanmadı —";
-    select.appendChild(noneOpt);
-    options.forEach((p) => {
-      const opt = document.createElement("option");
-      opt.value = p.id;
-      opt.textContent = p.name;
-      if (monthAssignments[doc.id] === p.id) opt.selected = true;
-      select.appendChild(opt);
-    });
-    select.addEventListener("change", () => {
-      const ma = data.assignments[currentMonth] || {};
-      if (select.value) {
-        ma[doc.id] = select.value;
-      } else {
-        delete ma[doc.id];
-      }
-      data.assignments[currentMonth] = ma;
-      save();
-      renderBoard();
-    });
-
-    row.appendChild(nameSpan);
-    row.appendChild(select);
-    listEl.appendChild(row);
-  });
-
-  // Poliklinik panosu
-  const boardEl = document.getElementById("polyBoard");
-  boardEl.innerHTML = "";
-  let emptyCount = 0;
-
-  data.polyclinics.forEach((p) => {
-    const assignedDocs = data.doctors.filter((d) => monthAssignments[d.id] === p.id);
-    const isEmpty = assignedDocs.length === 0;
-    if (isEmpty) emptyCount++;
+  for (let day = 1; day <= total; day++) {
+    if (!monthData[String(day)]) monthData[String(day)] = {};
+    const dayData = monthData[String(day)];
 
     const card = document.createElement("div");
-    card.className = "poly-card" + (isEmpty ? " empty" : "");
+    card.className = "assign-day";
 
-    const bar = document.createElement("div");
-    bar.className = "poly-card-bar";
+    const num = document.createElement("p");
+    num.className = "assign-day-num";
+    num.textContent = `${day} ${ayAdi}`;
+    card.appendChild(num);
 
-    const body = document.createElement("div");
-    body.className = "poly-card-body";
+    data.polyclinics.forEach((poly) => {
+      const assignedIds = dayData[poly.id] || [];
 
-    const nameEl = document.createElement("p");
-    nameEl.className = "poly-card-name";
-    nameEl.textContent = p.name;
-    body.appendChild(nameEl);
+      const row = document.createElement("div");
+      row.className = "assign-poly-row";
 
-    if (assignedDocs.length > 0) {
-      const ul = document.createElement("ul");
-      assignedDocs.forEach((d) => {
-        const li = document.createElement("li");
-        li.textContent = d.name;
-        ul.appendChild(li);
+      const label = document.createElement("p");
+      label.className = "assign-poly-name";
+      label.textContent = poly.name;
+      row.appendChild(label);
+
+      const chips = document.createElement("div");
+      chips.className = "assign-chips";
+      assignedIds.forEach((docId) => {
+        const doc = data.doctors.find((d) => d.id === docId);
+        if (!doc) return;
+        const chip = document.createElement("span");
+        chip.className = "assign-chip";
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = doc.name;
+        const rm = document.createElement("button");
+        rm.innerHTML = "&#10005;";
+        rm.addEventListener("click", () => {
+          dayData[poly.id] = assignedIds.filter((id) => id !== docId);
+          save();
+          renderBoard();
+        });
+        chip.appendChild(nameSpan);
+        chip.appendChild(rm);
+        chips.appendChild(chip);
       });
-      body.appendChild(ul);
-    } else {
-      const p2 = document.createElement("p");
-      p2.className = "poly-empty-text";
-      p2.textContent = "Doktor atanmadı";
-      body.appendChild(p2);
-    }
+      row.appendChild(chips);
 
-    card.appendChild(bar);
-    card.appendChild(body);
-    boardEl.appendChild(card);
-  });
+      const select = document.createElement("select");
+      const defOpt = document.createElement("option");
+      defOpt.value = "";
+      defOpt.textContent = "+ Doktor ekle";
+      select.appendChild(defOpt);
+      data.doctors
+        .filter((d) => {
+          if (assignedIds.includes(d.id)) return false;
+          if (d.eligible.length === 0) return true;
+          return d.eligible.includes(poly.id);
+        })
+        .forEach((d) => {
+          const opt = document.createElement("option");
+          opt.value = d.id;
+          opt.textContent = d.name;
+          select.appendChild(opt);
+        });
+      select.addEventListener("change", () => {
+        if (!select.value) return;
+        const cur = dayData[poly.id] || [];
+        dayData[poly.id] = [...cur, select.value];
+        save();
+        renderBoard();
+      });
+      row.appendChild(select);
 
-  const warnEl = document.getElementById("emptyWarning");
-  if (emptyCount > 0) {
-    warnEl.hidden = false;
-    warnEl.textContent = `${emptyCount} poliklinikte bu ay hiç doktor atanmamış.`;
-  } else {
-    warnEl.hidden = true;
+      card.appendChild(row);
+    });
+
+    gridEl.appendChild(card);
   }
 }
 
@@ -262,6 +259,7 @@ function renderSurgery() {
   if (!data.surgeryDays[surgeryMonth]) data.surgeryDays[surgeryMonth] = {};
   const monthData = data.surgeryDays[surgeryMonth];
   const total = daysInMonth(surgeryMonth);
+  const ayAdi = monthLabel(surgeryMonth).split(" ")[0];
 
   for (let day = 1; day <= total; day++) {
     const dayIds = monthData[String(day)] || [];
@@ -270,7 +268,7 @@ function renderSurgery() {
 
     const num = document.createElement("p");
     num.className = "surgery-day-num";
-    num.textContent = `${day} ${monthLabel(surgeryMonth).split(" ")[0]}`;
+    num.textContent = `${day} ${ayAdi}`;
     cell.appendChild(num);
 
     const chips = document.createElement("div");
@@ -349,7 +347,13 @@ function renderDoctors() {
     delBtn.title = "Doktoru sil";
     delBtn.addEventListener("click", () => {
       data.doctors = data.doctors.filter((d) => d.id !== doc.id);
-      Object.values(data.assignments).forEach((ma) => delete ma[doc.id]);
+      Object.values(data.assignments).forEach((monthData) => {
+        Object.values(monthData).forEach((dayData) => {
+          Object.keys(dayData).forEach((polyId) => {
+            dayData[polyId] = dayData[polyId].filter((id) => id !== doc.id);
+          });
+        });
+      });
       Object.values(data.surgeryDays).forEach((monthData) => {
         Object.keys(monthData).forEach((day) => {
           monthData[day] = monthData[day].filter((id) => id !== doc.id);
@@ -422,9 +426,9 @@ function renderPolyclinics() {
       data.doctors.forEach((d) => {
         d.eligible = d.eligible.filter((x) => x !== p.id);
       });
-      Object.values(data.assignments).forEach((ma) => {
-        Object.keys(ma).forEach((docId) => {
-          if (ma[docId] === p.id) delete ma[docId];
+      Object.values(data.assignments).forEach((monthData) => {
+        Object.values(monthData).forEach((dayData) => {
+          delete dayData[p.id];
         });
       });
       save();
@@ -437,12 +441,6 @@ function renderPolyclinics() {
     row.appendChild(delBtn);
     listEl.appendChild(row);
   });
-}
-
-function escapeHtml(str) {
-  const div = document.createElement("div");
-  div.textContent = str;
-  return div.innerHTML;
 }
 
 // ---------- Başlangıç ----------

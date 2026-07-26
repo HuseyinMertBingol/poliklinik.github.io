@@ -298,6 +298,88 @@ body {
   margin: 0;
 }
 
+/* ---------- Aylık Plan (gün x poliklinik ızgarası) ---------- */
+.assign-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 12px;
+}
+
+.assign-day {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.assign-day-num {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  margin: 0 0 8px;
+}
+
+.assign-poly-row {
+  padding: 6px 0;
+  border-top: 1px solid #EEF2F1;
+}
+
+.assign-poly-row:first-of-type { border-top: none; }
+
+.assign-poly-name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin: 0 0 4px;
+}
+
+.assign-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.assign-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 999px;
+  padding: 3px 6px 3px 9px;
+  max-width: 100%;
+}
+
+.assign-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.assign-chip button {
+  background: none;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 10px;
+  padding: 0 2px;
+  line-height: 1;
+  opacity: 0.85;
+}
+.assign-chip button:hover { opacity: 1; }
+
+.assign-poly-row select {
+  width: 100%;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+  background: #fff;
+  color: var(--text-muted);
+}
+
 /* ---------- Ameliyat Günleri ---------- */
 .surgery-grid {
   display: grid;
